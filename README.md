@@ -227,6 +227,7 @@ here; deploy behind TLS.
 | `TRINETRA_CAN_INTERFACE` | `virtual` | `socketcan` with `can0` for hardware |
 | `TRINETRA_CAN_CHANNEL` | `trinetra` | CAN channel name |
 | `TRINETRA_DB` | `data/trinetra.db` | SQLite location |
+| `TRINETRA_CORS_ORIGINS` | Vite dev server | comma-separated browser origins allowed to call the API; unnecessary when the dashboard and API share an origin |
 
 ---
 

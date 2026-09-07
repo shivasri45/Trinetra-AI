@@ -1,0 +1,62 @@
+# Single-host deployment: Caddy terminates TLS, serves the dashboard and proxies
+# the API; the backend runs one uvicorn worker against SQLite on a named volume.
+#
+# Deliberately no `deploy.replicas` and no scaling. EngineService is a
+# module-level singleton with an in-process acquisition loop and WebSocket
+# subscriber set, and Repository holds one SQLite connection. A second replica
+# would run a second, divergent engine and contend on the same database file.
+#
+#   copy .env.example to .env, fill it in, then:  docker compose up -d --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # production turns the default-credential check in startup_warnings() from
+      # a log line into a hard RuntimeError, so a misconfigured deploy fails at
+      # boot instead of running open.
+      TRINETRA_ENV: production
+      TRINETRA_AUTH: "1"
+      TRINETRA_API_KEY: ${TRINETRA_API_KEY:?set TRINETRA_API_KEY in .env}
+      TRINETRA_HMAC_KEY: ${TRINETRA_HMAC_KEY:?set TRINETRA_HMAC_KEY in .env}
+      TRINETRA_DB: /data/trinetra.db
+      TRINETRA_INGESTION: ${TRINETRA_INGESTION:-direct}
+      # Only needed if the dashboard is served from a different origin than the
+      # API. The default same-origin setup below does not use it.
+      TRINETRA_CORS_ORIGINS: ${TRINETRA_CORS_ORIGINS:-}
+    volumes:
+      - trinetra-data:/data
+    # No published ports: the backend is reachable only through Caddy on the
+    # internal network, so the API is never exposed without TLS.
+    expose:
+      - "8000"
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_TRINETRA_API: /api
+        # Baked into the JS bundle in clear text. See frontend/Dockerfile.
+        VITE_TRINETRA_API_KEY: ${TRINETRA_API_KEY:?set TRINETRA_API_KEY in .env}
+    restart: unless-stopped
+    environment:
+      TRINETRA_SITE_ADDRESS: ${TRINETRA_SITE_ADDRESS:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Persist issued certificates so a restart does not re-request them and
+      # run into Let's Encrypt rate limits.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+
+volumes:
+  trinetra-data:
+  caddy-data:
+  caddy-config:

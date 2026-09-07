@@ -23,6 +23,11 @@ data/trinetra.db-shm
 models/*.joblib
 data/synthetic/*.csv
 
+# Deployment secrets. .env.example is the committed template.
+.env
+.env.*
+!.env.example
+
 # Editors and OS
 .vscode/
 .idea/

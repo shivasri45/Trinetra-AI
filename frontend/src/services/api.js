@@ -55,8 +55,19 @@ export const api = {
   deleteMission: (id) => api.del(`/missions/${id}`),
 }
 
+// BASE is absolute in development ('http://localhost:8000') but a path prefix
+// behind a same-origin reverse proxy ('/api'). Resolving against the current
+// location covers both, and picks wss:// automatically when the page is served
+// over TLS.
+function socketUrl() {
+  const resolved = new URL(BASE + '/ws/telemetry', window.location.href)
+  resolved.protocol = resolved.protocol === 'https:' ? 'wss:' : 'ws:'
+  resolved.searchParams.set('api_key', API_KEY)
+  return resolved.toString()
+}
+
 export function telemetrySocket(onSnapshot, onStatus) {
-  const url = BASE.replace(/^http/, 'ws') + `/ws/telemetry?api_key=${encodeURIComponent(API_KEY)}`
+  const url = socketUrl()
   let socket
   let closed = false
   let retry

@@ -1,0 +1,39 @@
+# Dashboard and API on one origin.
+#
+# Serving both from the same host is what makes CORS irrelevant here: the
+# browser sees same-origin requests, so there is no preflight and no
+# Access-Control-Allow-Origin to match. TRINETRA_CORS_ORIGINS only matters if
+# you split the two across hostnames.
+#
+# Set TRINETRA_SITE_ADDRESS to a real domain and Caddy provisions a
+# Let's Encrypt certificate automatically. Left as `localhost` it serves a local
+# self-signed cert instead.
+
+{$TRINETRA_SITE_ADDRESS:localhost} {
+	encode gzip
+
+	# handle_path strips the /api prefix, so /api/telemetry/snapshot reaches the
+	# backend as /telemetry/snapshot. reverse_proxy upgrades WebSockets on its
+	# own, which covers /api/ws/telemetry.
+	handle_path /api/* {
+		reverse_proxy backend:8000 {
+			# The telemetry socket is long-lived and mostly idle between the
+			# 1 Hz snapshots. Do not let the proxy time it out.
+			flush_interval -1
+		}
+	}
+
+	# SPA fallback: unknown paths return index.html so client-side routing works.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

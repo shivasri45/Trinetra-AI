@@ -6,6 +6,26 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+DEV_CORS_ORIGINS: tuple[str, ...] = ('http://localhost:5173', 'http://127.0.0.1:5173')
+
+
+def _cors_origins_from_env() -> tuple[str, ...]:
+    """Browser origins permitted to call the API.
+
+    Comma-separated in ``TRINETRA_CORS_ORIGINS``; defaults to the Vite dev
+    server. Trailing slashes are stripped because the browser's ``Origin``
+    header never carries one, and an entry written as ``https://host/`` would
+    otherwise never match.
+
+    A deployment that serves the dashboard and the API from the same origin does
+    not need this at all. Avoid ``*``: these requests are credentialed, and
+    browsers reject a wildcard on a credentialed response.
+    """
+    raw = os.getenv('TRINETRA_CORS_ORIGINS', '')
+    origins = tuple(item.strip().rstrip('/') for item in raw.split(',') if item.strip())
+    return origins or DEV_CORS_ORIGINS
+
+
 @dataclass(frozen=True)
 class EngineSpec:
     """Reference geometry for a MALE-UAV-class four-stroke aero piston engine.
@@ -76,7 +96,7 @@ class Settings:
     api_key: str = os.getenv('TRINETRA_API_KEY', 'trinetra-dev-key')
     hmac_key: str = os.getenv('TRINETRA_HMAC_KEY', 'trinetra-dev-hmac')
     hmac_key_id: str = 'gcs-dev-01'
-    cors_origins: tuple[str, ...] = ('http://localhost:5173', 'http://127.0.0.1:5173')
+    cors_origins: tuple[str, ...] = field(default_factory=_cors_origins_from_env)
 
 
 settings = Settings()

@@ -1,0 +1,43 @@
+# Build context exclusions. Keep this in step with .gitignore, with one
+# deliberate difference: models/*.joblib IS shipped in the image, because the
+# pickle is tied to the pinned scikit-learn version and training inside the
+# build would add minutes for no benefit.
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Never ship a local mission database into the image. The container writes to a
+# mounted volume; baking these in would seed every deployment with local state.
+data/
+
+# Frontend is built in its own stage; node_modules must not enter the context.
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Repository and tooling
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+tests/
+docs/
+brain.md
+pytest.ini
+*.md
+
+# Local environment files must never land in an image layer.
+.env
+.env.*
+!.env.example
+
+# OS
+*.swp
+.DS_Store
+Thumbs.db
