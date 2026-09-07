@@ -1,0 +1,24 @@
+# Pinned for reproducibility. The trained model bundle in models/ is produced by
+# these versions; scikit-learn does not guarantee unpickling across minor releases.
+
+# --- API and serving
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+websockets==13.1
+
+# --- numerics and machine learning
+numpy==1.26.3
+scikit-learn==1.9.0
+joblib==1.6.0
+
+# --- engine data bus
+python-can==4.3.1
+
+# --- tests
+pytest==8.3.3
+httpx==0.27.2
+
+# Optional: per-feature SHAP attribution in the explainer. The explainer computes
+# grouped occlusion attributions without it, so this is not required.
+# shap==0.46.0

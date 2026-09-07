@@ -1,0 +1,283 @@
+{
+  "trained_at": "2026-09-06T19:08:48.768875+00:00",
+  "python": "3.11.4",
+  "samples": 31000,
+  "features": 93,
+  "classes": [
+    "alternator_failure",
+    "coking_degradation",
+    "combustion_instability",
+    "excessive_vibration",
+    "injector_abnormality",
+    "lubrication_issue",
+    "misfire",
+    "normal",
+    "overheating",
+    "sensor_drift"
+  ],
+  "split": {
+    "strategy": "GroupShuffleSplit over session id",
+    "test_size": 0.25,
+    "train_sessions": 97,
+    "test_sessions": 33
+  },
+  "classifier": {
+    "accuracy": 0.981,
+    "macro_f1": 0.977,
+    "per_class_f1": {
+      "alternator_failure": 0.9978,
+      "coking_degradation": 0.9689,
+      "combustion_instability": 0.9971,
+      "excessive_vibration": 0.9993,
+      "injector_abnormality": 0.9956,
+      "lubrication_issue": 0.9814,
+      "misfire": 1.0,
+      "normal": 0.9786,
+      "overheating": 0.9427,
+      "sensor_drift": 0.9087
+    },
+    "confusion_matrix": [
+      [
+        687,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0
+      ],
+      [
+        0,
+        218,
+        0,
+        0,
+        0,
+        0,
+        0,
+        12,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        686,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        689,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        228,
+        0,
+        0,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1108,
+        0,
+        42,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        230,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3196,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        42,
+        411,
+        7
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        1,
+        199
+      ]
+    ]
+  },
+  "novelty": {
+    "operating_quantile": 0.99,
+    "threshold": 0.5239,
+    "healthy_false_alarm_rate": 0.01,
+    "developed_fault_detection_rate": 0.4911,
+    "threshold_sweep": [
+      {
+        "healthy_quantile": 0.95,
+        "threshold": 0.4886,
+        "false_alarm_rate": 0.05,
+        "developed_fault_detection": 0.6762
+      },
+      {
+        "healthy_quantile": 0.98,
+        "threshold": 0.5099,
+        "false_alarm_rate": 0.02,
+        "developed_fault_detection": 0.5802
+      },
+      {
+        "healthy_quantile": 0.99,
+        "threshold": 0.5239,
+        "false_alarm_rate": 0.01,
+        "developed_fault_detection": 0.4911
+      },
+      {
+        "healthy_quantile": 0.995,
+        "threshold": 0.5341,
+        "false_alarm_rate": 0.005,
+        "developed_fault_detection": 0.414
+      },
+      {
+        "healthy_quantile": 0.999,
+        "threshold": 0.5609,
+        "false_alarm_rate": 0.0013,
+        "developed_fault_detection": 0.2699
+      }
+    ],
+    "note": "Detection measured only on samples where fault severity > 0.6."
+  },
+  "top_features": [
+    {
+      "feature": "alternator_output_isolation",
+      "importance": 0.03651
+    },
+    {
+      "feature": "vib_order_0p5_ratio",
+      "importance": 0.03599
+    },
+    {
+      "feature": "vib_order_1p5_ratio",
+      "importance": 0.03503
+    },
+    {
+      "feature": "cht_drift",
+      "importance": 0.03414
+    },
+    {
+      "feature": "vib_imbalance_index",
+      "importance": 0.03386
+    },
+    {
+      "feature": "vib_order_1p0_ratio",
+      "importance": 0.03381
+    },
+    {
+      "feature": "vibration_nres",
+      "importance": 0.03348
+    },
+    {
+      "feature": "alternator_output_nres",
+      "importance": 0.03228
+    },
+    {
+      "feature": "vib_misfire_index",
+      "importance": 0.03161
+    },
+    {
+      "feature": "oil_pressure_cond_nres",
+      "importance": 0.02864
+    },
+    {
+      "feature": "power_kw_rel",
+      "importance": 0.02838
+    },
+    {
+      "feature": "vib_order_3p0_ratio",
+      "importance": 0.02538
+    },
+    {
+      "feature": "cht_rel",
+      "importance": 0.025
+    },
+    {
+      "feature": "cht_nres",
+      "importance": 0.0247
+    },
+    {
+      "feature": "air_fuel_ratio_drift",
+      "importance": 0.02361
+    },
+    {
+      "feature": "cht_cyl_nres_max",
+      "importance": 0.02247
+    },
+    {
+      "feature": "air_fuel_ratio_nres_std",
+      "importance": 0.02192
+    },
+    {
+      "feature": "oil_temperature_drift",
+      "importance": 0.02168
+    },
+    {
+      "feature": "egt_rel",
+      "importance": 0.02168
+    },
+    {
+      "feature": "vib_roughness_index",
+      "importance": 0.02113
+    }
+  ]
+}
