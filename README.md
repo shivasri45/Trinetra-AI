@@ -162,8 +162,15 @@ would leak near-identical rows across the boundary.
 | --- | --- |
 | Accuracy | 0.981 |
 | Macro F1 | 0.977 |
+| Accuracy, expressed faults only | 0.9994 |
+| Macro F1, expressed faults only | 0.9982 |
 | Weakest class | `sensor_drift`, F1 0.909 |
 | Novelty false alarm on healthy data | 1.0 % |
+
+The two accuracy figures differ because a row is labelled with its fault from the
+moment of injection, while the physics takes up to 120 s to express it. Scoring
+only rows where the fault is actually observable gives 0.9994; the gap is the
+incipient window, and detection latency is the honest measure of it.
 
 End-to-end through the full pipeline with alarm debouncing:
 

@@ -12,7 +12,7 @@ before anything touches a real aircraft.
 | --- | --- |
 | Thermodynamic engine model | Implemented from first principles, dimensionally realistic, **not calibrated to any real engine** |
 | Kalman state estimation and health indices | Implemented, validated against transients |
-| Fault detection and identification | Implemented, 0.986 held-out accuracy on synthetic data |
+| Fault detection and identification | Implemented, 0.981 held-out accuracy on synthetic data |
 | RUL with confidence interval | Implemented, extrapolation from degradation trend |
 | CAN / J1939-style ingestion | Implemented over `python-can`; virtual bus in the demonstration |
 | Mission recording and replay | Implemented, SQLite |

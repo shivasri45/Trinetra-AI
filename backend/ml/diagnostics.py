@@ -19,6 +19,7 @@ the situation that deserves human attention.
 """
 from __future__ import annotations
 
+import logging
 import math
 from collections import deque
 from pathlib import Path
@@ -28,6 +29,8 @@ import numpy as np
 
 from backend.config.settings import FAULTS, settings
 from backend.preprocessing.pipeline import FEATURE_NAMES, FeatureBuilder
+
+logger = logging.getLogger('trinetra')
 
 ML_WEIGHT = 0.75
 PRIOR_WEIGHT = 0.25
@@ -52,8 +55,14 @@ class Diagnostics:
     def __init__(self, model_dir: Path | None = None) -> None:
         self.bundle: dict | None = None
         self.backend = 'physics_prior_fallback'
+        # Distinguishes "no model was supplied" from "a model was supplied and
+        # would not load". Both degrade to the physics rules, but only the second
+        # is a deployment fault, and it used to be invisible.
+        self.load_error: str | None = None
         self.trigger_history: deque[set[str]] = deque(maxlen=PERSISTENCE_WINDOW)
         path = Path(model_dir or settings.model_dir) / 'diagnostics.joblib'
+        if not path.exists():
+            logger.info('No model bundle at %s; using physics-prior fallback.', path)
         if path.exists():
             try:
                 bundle = joblib.load(path)
@@ -68,6 +77,10 @@ class Diagnostics:
                 self.backend = 'trained'
             except Exception as exc:  # pragma: no cover - defensive load path
                 self.load_error = str(exc)
+                # Loud, because a stale or corrupt bundle is otherwise
+                # indistinguishable from a clean start on the physics rules.
+                logger.warning('Model bundle at %s failed to load (%s); '
+                               'falling back to physics rules.', path, exc)
 
     # --------------------------------------------------------------- detection
     def analyse(self, features: dict[str, float], twin: dict) -> dict:

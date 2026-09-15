@@ -95,7 +95,11 @@ class Settings:
     auth_enabled: bool = os.getenv('TRINETRA_AUTH', '1') != '0'
     api_key: str = os.getenv('TRINETRA_API_KEY', 'trinetra-dev-key')
     hmac_key: str = os.getenv('TRINETRA_HMAC_KEY', 'trinetra-dev-hmac')
-    hmac_key_id: str = 'gcs-dev-01'
+    # Identifies which signing key produced a frame, so a recipient can verify
+    # against the right one after a key rotation. Not a secret, but it is
+    # reported on every signature and by /security/posture, so a deployment
+    # should not be advertising a development identifier.
+    hmac_key_id: str = os.getenv('TRINETRA_HMAC_KEY_ID', 'gcs-dev-01')
     cors_origins: tuple[str, ...] = field(default_factory=_cors_origins_from_env)
 
 

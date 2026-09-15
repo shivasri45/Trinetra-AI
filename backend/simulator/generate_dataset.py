@@ -78,6 +78,15 @@ def generate(path: Path | None = None, verbose: bool = True) -> Path:
             cylinders = (2, 0) if fault in ('misfire', 'injector_abnormality') else (2, 1)
             for repeat, cylinder in enumerate(cylinders):
                 seed += 1
+                # Deliberately NOT jittered. Widening the fault sessions' operating
+                # envelope with the same spread used for healthy runs was measured
+                # and made things worse: overall accuracy 0.981 -> 0.950 and
+                # sensor_drift F1 0.909 -> 0.000, i.e. the class stopped being
+                # predicted at all. Sensor drift is a CHT bias, and an ambient
+                # temperature spread of sigma 9 K is large enough to swamp it.
+                # Fault coverage across the envelope is still worth having, but it
+                # needs a spread that does not mask the subtlest fault - see the
+                # note in docs/model_card.md.
                 rows += run_session(mission, fault, seed, cylinder,
                                     session=f'{mission}|{fault}|r{repeat}')
         if verbose:

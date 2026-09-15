@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-09-06T19:08:48.768875+00:00",
+  "trained_at": "2026-09-14T20:15:00.176432+00:00",
   "python": "3.11.4",
   "samples": 31000,
   "features": 93,
@@ -20,6 +20,12 @@
     "test_size": 0.25,
     "train_sessions": 97,
     "test_sessions": 33
+  },
+  "label_weighting": {
+    "enabled": false,
+    "scheme": "uniform",
+    "incipient_floor_weight": 0.1,
+    "rationale": "A fault row recorded before the fault has expressed carries a label the measurements cannot yet support."
   },
   "classifier": {
     "accuracy": 0.981,
@@ -157,7 +163,26 @@
         1,
         199
       ]
-    ]
+    ],
+    "expressed_only": {
+      "severity_threshold": 0.6,
+      "samples": 7128,
+      "accuracy": 0.9994,
+      "macro_f1": 0.9982,
+      "per_class_f1": {
+        "alternator_failure": 1.0,
+        "coking_degradation": 0.9885,
+        "combustion_instability": 1.0,
+        "excessive_vibration": 1.0,
+        "injector_abnormality": 1.0,
+        "lubrication_issue": 1.0,
+        "misfire": 1.0,
+        "normal": 0.9994,
+        "overheating": 1.0,
+        "sensor_drift": 0.9937
+      },
+      "note": "Healthy rows plus fault rows past the expression threshold. Excludes the incipient window, where the label is not yet supported by the measurements."
+    }
   },
   "novelty": {
     "operating_quantile": 0.99,

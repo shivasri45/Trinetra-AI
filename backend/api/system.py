@@ -66,8 +66,12 @@ def model_metrics(service: EngineService = Depends(get_service)) -> dict:
     path = Path(settings.model_dir) / 'metrics.json'
     if not path.exists():
         return {'available': False, 'backend': service.ml.backend,
+                'load_error': service.ml.load_error,
                 'note': 'Run "python -m backend.ml.train" to produce metrics.'}
     return {'available': True, 'backend': service.ml.backend,
+            # Non-null means a bundle was present but rejected, so the reported
+            # metrics below describe a model that is not actually serving.
+            'load_error': service.ml.load_error,
             **json.loads(path.read_text(encoding='utf-8'))}
 
 

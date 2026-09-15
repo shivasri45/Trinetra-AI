@@ -72,12 +72,35 @@ to both sides.
 
 ## Results on held-out sessions
 
-| Metric | Value |
-| --- | --- |
-| Accuracy | 0.981 |
-| Macro F1 | 0.977 |
+| Metric | All test rows | Expressed faults only |
+| --- | --- | --- |
+| Accuracy | 0.981 | 0.9994 |
+| Macro F1 | 0.977 | 0.9982 |
+| Samples | 7,750 | 7,128 |
 
-Per-class F1:
+Both figures are reported because they answer different questions, and the gap
+between them is itself the result.
+
+The dataset labels a row with its fault from the tick of injection, but the
+physics needs time to express: sensor drift ramps over 120 s and a cylinder head
+has a time constant near 20 s. Rows inside that window carry a label the
+instruments cannot yet support, so scoring them measures the labelling
+convention rather than the model. The **expressed** column restricts scoring to
+healthy rows plus fault rows past severity 0.6, the same threshold already used
+for the novelty measurement below.
+
+Read together: once a fault is physically observable the classifier identifies it
+almost perfectly, and essentially all of the residual 1.9 % error in the headline
+figure lives in the incipient window. The confusion matrix in `metrics.json`
+confirms the mechanism - nearly every misclassification is a fault row predicted
+`normal`, and the rate per class tracks that class's ramp time, from `misfire`
+(6 s ramp, zero errors) to `sensor_drift` (120 s ramp, worst).
+
+This is not a licence to quote only the flattering number. The incipient window
+is real, and detection latency is the honest measure of it - see the
+per-fault latency table below.
+
+Per-class F1 over all test rows:
 
 | Class | F1 |
 | --- | --- |
@@ -175,6 +198,55 @@ Structural guarantees, each covered by a test in `tests/test_diagnostics.py`:
 Features are dimensionless wherever possible - normalised innovations, crank
 orders referenced to the firing order, ratios against expectation - so a model
 trained at one operating point stays valid across the envelope.
+
+---
+
+## Rejected changes
+
+Recorded because a measured negative result is worth as much as a positive one,
+and because both of these look obviously correct on paper.
+
+### Envelope jitter on fault sessions
+
+The generator randomises throttle, ambient temperature, ambient pressure and
+airspeed ratio for the extra healthy sessions, so the novelty detector sees a
+continuous healthy manifold rather than five discrete operating points. Fault
+sessions run at their profile's nominal conditions instead, which means every
+fault is only ever observed at one operating point per profile - an obvious
+asymmetry to want to close.
+
+Applying the same jitter to fault sessions was measured and made things clearly
+worse:
+
+| Configuration | Accuracy | Macro F1 | `sensor_drift` F1 |
+| --- | --- | --- | --- |
+| Nominal fault sessions (shipped) | 0.981 | 0.977 | 0.909 |
+| Jittered fault sessions | 0.950 | 0.878 | **0.000** |
+
+`sensor_drift` stopped being predicted at all. The mechanism is that sensor drift
+is a slow bias on cylinder head temperature, detected largely through the
+`cht_drift` feature, and an ambient temperature spread of sigma 9 K is large
+relative to the bias being detected. Widening the envelope hides the subtlest
+fault signature underneath benign variation.
+
+Two things worth taking from this. Fault-envelope coverage is still a real gap,
+but it needs a spread chosen per fault rather than the healthy-session spread
+reused wholesale. And more importantly, the fragility is not purely an artefact
+of the dataset: if a 9 K ambient shift can mask sensor drift here, then ambient
+variation in flight - which is far wider than 9 K - deserves investigation as a
+robustness question about the estimator, not just the training data.
+
+### Severity weighting of fault rows
+
+Weighting each fault row by its severity when fitting the classifier, so early
+rows contribute in proportion to how far the fault has actually developed. This
+is principled - it encodes confidence in the label rather than asserting it - but
+measured on the current dataset it moved expressed macro F1 by roughly 0.001,
+which is inside single-split noise.
+
+Retained as `train(weight_by_severity=...)`, defaulting to off. It is worth
+revisiting with multiple dataset realisations, where an effect that small could
+actually be resolved.
 
 ---
 

@@ -12,6 +12,12 @@ Evaluation uses ``GroupShuffleSplit`` over session identifiers. Consecutive
 samples inside one run are strongly autocorrelated, so a plain random split
 would leak nearly identical rows across the boundary and report an accuracy that
 does not survive contact with new data.
+
+Fault rows are weighted by severity when fitting the classifier. The dataset
+labels a row from the moment a fault is injected, but the physics takes time to
+express, so the earliest rows of a slow fault are labelled for a condition the
+instruments cannot yet show. Metrics are reported over all test rows and over
+the expressed subset separately, because those answer different questions.
 """
 from __future__ import annotations
 
@@ -33,6 +39,17 @@ from backend.preprocessing.pipeline import FEATURE_NAMES
 
 MODEL_FILE = 'diagnostics.joblib'
 METRICS_FILE = 'metrics.json'
+# Severity above which a fault is treated as expressed. The same value already
+# gates the novelty measurement below, so detection is reported on one definition.
+EXPRESSED_SEVERITY = 0.6
+# The dataset labels a row with its fault from the tick of injection, but the
+# physics needs time to express: a cylinder head has a ~20 s time constant and
+# sensor drift ramps over 120 s. Early rows therefore carry a label the data
+# cannot yet support. Weighting each fault row by its severity encodes confidence
+# in the label instead of asserting it. The floor keeps incipient samples in the
+# fit at low influence rather than discarding them, because graded early
+# response is a capability worth training for.
+INCIPIENT_FLOOR_WEIGHT = 0.1
 # Healthy-data quantile used as the live novelty threshold. Novelty is only one
 # of three detectors, so a conservative setting is preferred: the statistical and
 # supervised detectors carry sensitivity, novelty covers unlabelled failure modes.
@@ -58,7 +75,16 @@ def load_dataset(path: Path | None = None) -> tuple[np.ndarray, np.ndarray, np.n
     return np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0), y, groups, severity
 
 
-def train(dataset: Path | None = None, out_dir: Path | None = None, verbose: bool = True) -> dict:
+def train(dataset: Path | None = None, out_dir: Path | None = None, verbose: bool = True,
+          weight_by_severity: bool = False) -> dict:
+    """Fit both models and persist the bundle.
+
+    ``weight_by_severity`` toggles label-confidence weighting so its effect can
+    be measured against an otherwise identical run. Off by default: measured on
+    the current dataset it moved expressed macro F1 by about 0.001, which is
+    within single-split noise, so it is not switched on for a change that cannot
+    be demonstrated.
+    """
     x, y, groups, severity = load_dataset(dataset)
     directory = Path(out_dir or settings.model_dir)
     directory.mkdir(parents=True, exist_ok=True)
@@ -79,16 +105,38 @@ def train(dataset: Path | None = None, out_dir: Path | None = None, verbose: boo
     ).fit(healthy)
 
     # --- supervised fault identification
+    # Label-confidence weighting: healthy rows are certain, fault rows scale with
+    # how far the fault has actually developed.
+    sample_weight = np.where(
+        y_train == 'normal',
+        1.0,
+        INCIPIENT_FLOOR_WEIGHT + (1.0 - INCIPIENT_FLOOR_WEIGHT) * severity[train_idx],
+    ) if weight_by_severity else None
     classifier = RandomForestClassifier(
         n_estimators=400, max_depth=None, min_samples_leaf=2,
         class_weight='balanced_subsample', random_state=settings.seed, n_jobs=-1,
-    ).fit(xs_train, y_train)
+    ).fit(xs_train, y_train, sample_weight=sample_weight)
 
     predictions = classifier.predict(xs_test)
     labels = sorted(set(y))
     report = classification_report(y_test, predictions, labels=labels,
                                    zero_division=0, output_dict=True)
     matrix = confusion_matrix(y_test, predictions, labels=labels).tolist()
+
+    # The overall figure above scores every test row, including fault rows
+    # recorded before the fault could physically be seen. Those rows are
+    # genuinely indistinguishable from healthy, so they measure the labelling
+    # convention rather than the model. Reporting the expressed subset as well
+    # separates "can it name a developed fault" from "how much of the incipient
+    # window is unknowable". Both are reported; neither replaces the other.
+    expressed_mask = (y_test == 'normal') | (severity[test_idx] > EXPRESSED_SEVERITY)
+    # Score only over classes actually present in the subset, so an absent class
+    # cannot drag macro F1 down with a phantom zero.
+    expressed_labels = sorted(set(y_test[expressed_mask]))
+    expressed_report = classification_report(
+        y_test[expressed_mask], predictions[expressed_mask],
+        labels=expressed_labels, zero_division=0, output_dict=True,
+    ) if expressed_labels else {}
 
     # Novelty behaviour on held-out data: how often healthy is flagged, and how
     # often a genuine fault is caught, measured only once the fault is expressed.
@@ -145,12 +193,33 @@ def train(dataset: Path | None = None, out_dir: Path | None = None, verbose: boo
         'split': {'strategy': 'GroupShuffleSplit over session id', 'test_size': 0.25,
                   'train_sessions': int(len(set(groups[train_idx]))),
                   'test_sessions': int(len(set(groups[test_idx])))},
+        'label_weighting': {
+            'enabled': bool(weight_by_severity),
+            'scheme': ('fault rows weighted by severity, healthy rows weight 1.0'
+                       if weight_by_severity else 'uniform'),
+            'incipient_floor_weight': INCIPIENT_FLOOR_WEIGHT,
+            'rationale': ('A fault row recorded before the fault has expressed '
+                          'carries a label the measurements cannot yet support.'),
+        },
         'classifier': {
             'accuracy': round(float(report['accuracy']), 4),
             'macro_f1': round(float(report['macro avg']['f1-score']), 4),
             'per_class_f1': {k: round(float(v['f1-score']), 4)
                              for k, v in report.items() if k in labels},
             'confusion_matrix': matrix,
+            'expressed_only': {
+                'severity_threshold': EXPRESSED_SEVERITY,
+                'samples': int(expressed_mask.sum()),
+                'accuracy': round(float(expressed_report['accuracy']), 4) if expressed_report else None,
+                'macro_f1': round(float(expressed_report['macro avg']['f1-score']), 4)
+                            if expressed_report else None,
+                'per_class_f1': {k: round(float(v['f1-score']), 4)
+                                 for k, v in expressed_report.items()
+                                 if k in expressed_labels},
+                'note': ('Healthy rows plus fault rows past the expression '
+                         'threshold. Excludes the incipient window, where the '
+                         'label is not yet supported by the measurements.'),
+            },
         },
         'novelty': {
             'operating_quantile': OPERATING_QUANTILE,
@@ -175,6 +244,10 @@ def train(dataset: Path | None = None, out_dir: Path | None = None, verbose: boo
               f'test_sessions={metrics["split"]["test_sessions"]}')
         print(f'classifier accuracy={metrics["classifier"]["accuracy"]} '
               f'macro_f1={metrics["classifier"]["macro_f1"]}')
+        expressed = metrics['classifier']['expressed_only']
+        print(f'  expressed only (severity>{EXPRESSED_SEVERITY}): '
+              f'accuracy={expressed["accuracy"]} macro_f1={expressed["macro_f1"]} '
+              f'n={expressed["samples"]}')
         print(f'novelty: healthy false-alarm={false_alarm:.3f} '
               f'developed-fault detection={detection:.3f}')
         print('per-class F1:')
