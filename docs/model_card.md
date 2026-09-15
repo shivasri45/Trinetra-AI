@@ -201,6 +201,74 @@ trained at one operating point stays valid across the envelope.
 
 ---
 
+## Validation against a published specification
+
+The engine parameters correspond to a **Rotax 912 ULS/S**. Four are the
+manufacturer's published figures and can be checked independently; the rest are
+modelling assumptions. Distinguishing the two is the point of this section.
+
+| Parameter | Source | Value |
+| --- | --- | --- |
+| Displacement | published | 1352 cm3 |
+| Rated output | published | 73.5 kW / 100 hp |
+| Speed at rated output | published | 5800 rpm (take-off, 5 min limit) |
+| Max CHT | published | 135 C |
+| Compression ratio | **uncertain** | 10.5:1 used; sources also give 11:1 |
+| Idle speed, TBO, fuel properties | assumed | plausible for the class, not sourced |
+| The seven constants in `physics.py` | **fitted** | tuned to land near the rating |
+
+Manufacturer specification: <https://www.flyrotax.com/products/912-uls-s>.
+Operating limits appear in the 912 series Operator's Manual; the CHT figure is
+also quoted in NTSB docket excerpts of the manufacturer's manuals. Engines
+converted to coolant-temperature measurement use a 120 C limit instead.
+
+### Model output at reference conditions
+
+ISA sea level, 15 C, 101.325 kPa.
+
+| Condition | Quantity | Model | Published | Delta |
+| --- | --- | --- | --- | --- |
+| Full throttle | Power | 67.6 kW | 73.5 kW | **-8.1 %** |
+| Full throttle | Speed | 5639 rpm | 5800 rpm | -2.8 % |
+| Full throttle | BSFC | 0.262 kg/kWh | not sourced | - |
+| 75 % throttle | Power | 52.6 kW (71.6 % rated) | - | - |
+| 75 % throttle | Fuel flow | 17.6 L/h | not sourced | - |
+| 75 % throttle | Oil temperature | 97.3 C | 90-110 C normal | in range |
+| 75 % throttle | Oil pressure | 51.8 psi | within normal band | in range |
+| 75 % throttle | CHT | 184.3 C | 135 C maximum | **+49 C over limit** |
+| 75 % throttle | EGT | 728.6 C | below installation limits | plausible |
+
+### Two discrepancies, stated plainly
+
+**Power is 8 % low at full throttle.** `tests/test_physics.py` asserts rated
+power within a 12 % tolerance, so this passes, but the tolerance is loose enough
+that it was not previously visible. The model also reaches its peak at 5639 rpm
+rather than 5800.
+
+**CHT runs about 50 C above the published maximum.** This is the more serious
+one. The real 912 has liquid-cooled heads; `head_temperature()` implements
+forced-convection *air* cooling (`Nu ~ Re^0.8` on air mass flux), so the heat
+rejection path is wrong for this engine and `COOLING_COEFF` was fitted to a
+temperature band that is not the real one. A normal cruise point therefore sits
+above the real engine's red line.
+
+What this does and does not affect. Detection and identification are unaffected,
+because every health index and residual is measured against the model's *own*
+expectation rather than against an absolute limit - the twin and the simulated
+engine share `EnginePhysics`, so a consistent offset cancels. What it does affect
+is any claim that the absolute instrument readings correspond to a real 912, and
+it means the thermal limits shown on the dashboard are not the aircraft's limits.
+
+Fixing it means refitting `COOLING_COEFF` against a liquid-cooled head model,
+which changes every temperature in the dataset and invalidates the trained
+bundle and all metrics above. It is deliberately left as a recorded defect rather
+than a silent retune.
+
+Finding both of these took one afternoon of comparing model output against
+published figures, which is an argument for doing this kind of check early.
+
+---
+
 ## Rejected changes
 
 Recorded because a measured negative result is worth as much as a positive one,

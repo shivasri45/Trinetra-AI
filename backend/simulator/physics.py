@@ -24,20 +24,32 @@ from dataclasses import dataclass
 from backend.config.settings import EngineSpec
 from backend.simulator.vibration import expected_rms, healthy_drivers
 
-R_AIR = 287.05          # J/(kg.K)
-GAMMA = 1.35            # polytropic index for a hot working fluid
-RHO_SEA_LEVEL = 1.225   # kg/m3 at 15 C, 101.325 kPa
-CP_EXHAUST = 1250.0     # J/(kg.K)
+# --- Physical constants. Standard reference values, not fitted. ---
+R_AIR = 287.05          # J/(kg.K), specific gas constant for dry air
+RHO_SEA_LEVEL = 1.225   # kg/m3 at 15 C, 101.325 kPa (ISA sea level)
+CP_EXHAUST = 1250.0     # J/(kg.K), representative for hot combustion products
+GAMMA = 1.35            # polytropic index; a compromise between cold air (1.40)
+                        # and hot products (~1.30), so Otto efficiency from this
+                        # is indicative rather than exact
+
+# --- Fitted constants. NOT sourced to any document. ---
+# Each of these was chosen so the model lands near the reference engine's
+# published rating and plausible cruise readings. They are the model's free
+# parameters, and Stage 1 of docs/deployment_roadmap.md exists to replace them
+# with dynamometer measurements. Anything derived from them inherits their
+# uncertainty, so do not present values that depend on these as validated.
 EXHAUST_HEAT_FRACTION = 0.358
 HEAD_HEAT_FRACTION = 0.22
 INDUCTION_HEATING_C = 15.0
-
-# Calibration constants, chosen so that the model reproduces the reference
-# engine's published sea-level rating and typical cruise instrument readings.
 CYCLE_DEVIATION = 0.78      # real cycle vs. air-standard Otto
 VE_MAX = 0.92
 VE_PEAK_RPM = 4800.0
 VE_SPREAD_RPM = 3000.0
+# Known to be wrong for a Rotax 912, which has liquid-cooled heads: this models
+# forced-convection air cooling and puts cruise CHT near 184 C against a
+# published limit of 135 C. Detection is unaffected because health is measured
+# against the model's own expectation, but the absolute figure is not
+# representative. See the validation table in docs/model_card.md.
 COOLING_COEFF = 180.0       # W/K at reference cooling mass flux
 OIL_PUMP_PSI_REF = 48.0     # gauge pressure at 4000 rpm, 90 C oil
 OIL_RELIEF_PSI = 78.0

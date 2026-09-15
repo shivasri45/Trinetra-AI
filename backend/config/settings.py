@@ -30,9 +30,32 @@ def _cors_origins_from_env() -> tuple[str, ...]:
 class EngineSpec:
     """Reference geometry for a MALE-UAV-class four-stroke aero piston engine.
 
-    Values are representative of a ~1.2 L four-cylinder liquid/air-cooled unit
-    in the Rotax 912/914 class. They are public specification-level figures used
-    only to keep the synthetic model dimensionally realistic.
+    Provenance. Four values below are the published specification of a Rotax
+    912 ULS/S and can be checked against the manufacturer: displacement
+    1352 cm3, rated output 73.5 kW (100 hp) at 5800 rpm. The 5800 figure is the
+    take-off rating, permitted for five minutes; maximum continuous is lower.
+
+      https://www.flyrotax.com/products/912-uls-s
+
+    ``compression_ratio`` is the least certain field: sources give 10.5:1 and
+    11:1 for different variants of the ULS. It feeds ``otto_efficiency`` directly
+    as ``1 - r^(1-gamma)``, so pin it from a specific manual edition before
+    quoting any efficiency figure as validated.
+
+    Everything else here - idle speed, TBO, fuel properties - is plausible for
+    the class but is **not** sourced to a document. Treat it as a modelling
+    assumption, not a specification.
+
+    This is a naturally aspirated engine model: ``manifold_pressure`` cannot
+    exceed ambient, so it represents the 912, not the turbocharged 914.
+
+    Known divergence from the real 912 ULS: cylinder head temperature. The real
+    engine has liquid-cooled heads with a published maximum of 135 C, while
+    ``EnginePhysics.head_temperature`` models forced-convection air cooling and
+    runs roughly 50 C above that at cruise. See the validation table in
+    docs/model_card.md. Health indices are referenced to the model's own
+    expectation, so detection is unaffected, but the absolute temperatures are
+    not representative of this engine.
     """
 
     name: str = 'Generic 1.35L 4-cyl 4-stroke aero piston'
