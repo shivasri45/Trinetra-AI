@@ -24,7 +24,12 @@ import numpy as np
 
 from backend.config.settings import SUBSYSTEMS, settings
 
-MIN_SAMPLES = 45            # minimum points before a trend is published
+# Minimum points before a trend is published. Low enough that the panel becomes
+# useful within seconds rather than after a minute, which is safe because the
+# significance test in _trend rejects a slope that few noisy points cannot
+# support - so a short series reports "no trend" instead of a bad extrapolation.
+# n - 2 degrees of freedom still leaves the slope standard error meaningful.
+MIN_SAMPLES = 15
 TREND_WINDOW = 240          # samples used for the regression
 SMOOTHING = 0.12            # EMA factor applied to the noisy health index
 MIN_SLOPE = 1e-4            # health per hour below which the trend is flat

@@ -8,18 +8,23 @@ import { Bar, Badge, Empty, Metric, Panel, pretty, stateClass } from './primitiv
 // as a figure puts the most optimistic possible value next to a critical health
 // index, which reads as the panels contradicting each other. Show the state
 // instead, and keep the number for the case where a trend was really fitted.
-const RUL_PLACEHOLDER_STATUS = {
-  establishing_trend: ['Establishing', 'collecting samples for a trend'],
-  no_degradation_trend: ['No wear trend', 'no measurable degradation; limited by TBO'],
-}
-
 function rulDisplay(rul) {
   if (!rul) return { value: '--', unit: '', tone: '' }
-  const placeholder = RUL_PLACEHOLDER_STATUS[rul.status]
-  if (placeholder) {
-    const [value, unit] = placeholder
-    return { value, unit, tone: '' }
+
+  // Not enough samples yet: the estimator has nothing to fit, so there is no
+  // number to show. Brief, and honest about being brief.
+  if (rul.status === 'establishing_trend') {
+    return { value: 'Establishing', unit: 'collecting samples for a trend', tone: '' }
   }
+
+  // No measurable degradation. This is a result, not a gap: life is limited by
+  // the published overhaul interval rather than by observed wear, so the hours
+  // are real and worth showing - just qualified so they are not read as a
+  // degradation-based prediction.
+  if (rul.status === 'no_degradation_trend') {
+    return { value: `${rul.hours} h`, unit: 'TBO limited - no measurable wear', tone: 'ok' }
+  }
+
   const ci = rul.confidence_interval_hours
   return {
     value: `${rul.hours} h`,
