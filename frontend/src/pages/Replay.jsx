@@ -202,12 +202,12 @@ export default function Replay() {
             <div className="column">
               <TrendChart
                 title="Rotational and thermal"
-                subtitle="replayed telemetry up to the cursor"
+                subtitle="replayed telemetry - RPM left, temperatures right"
                 history={window}
                 series={[
                   ['rpm', '#40c9ff', 'RPM'],
-                  ['cht', '#ffb25b', 'CHT °C'],
-                  ['egt', '#fb6376', 'EGT °C'],
+                  ['cht', '#ffb25b', 'CHT °C', 'right'],
+                  ['egt', '#fb6376', 'EGT °C', 'right'],
                 ]}
               />
               <div className="pair">

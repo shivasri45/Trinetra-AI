@@ -39,22 +39,22 @@ export default function Dashboard({ snapshot, history, spectrum, alarms }) {
         <div className="column">
           <TrendChart
             title="Rotational and thermal"
-            subtitle="RPM, cylinder head and exhaust gas temperature"
+            subtitle="RPM on the left axis, temperatures on the right"
             history={history}
             series={[
               ['rpm', '#40c9ff', 'RPM'],
-              ['cht', '#ffb25b', 'CHT °C'],
-              ['egt', '#fb6376', 'EGT °C'],
+              ['cht', '#ffb25b', 'CHT °C', 'right'],
+              ['egt', '#fb6376', 'EGT °C', 'right'],
             ]}
           />
           <TrendChart
             title="Lubrication and fuel"
-            subtitle="oil pressure and temperature, fuel flow"
+            subtitle="oil pressure and temperature left, fuel flow right"
             history={history}
             series={[
               ['oil_pressure', '#6de6a9', 'Oil psi'],
               ['oil_temperature', '#f4c95d', 'Oil °C'],
-              ['fuel_flow', '#ad8dff', 'Fuel L/h'],
+              ['fuel_flow', '#ad8dff', 'Fuel L/h', 'right'],
             ]}
           />
           <div className="pair">
@@ -69,12 +69,12 @@ export default function Dashboard({ snapshot, history, spectrum, alarms }) {
           <div className="pair">
             <TrendChart
               title="Health and anomaly trend"
-              subtitle="fused health index against anomaly score"
+              subtitle="health index left, anomaly score right"
               history={history}
               height={170}
               series={[
                 ['health', '#6de6a9', 'Health'],
-                ['anomaly_score', '#fb6376', 'Anomaly'],
+                ['anomaly_score', '#fb6376', 'Anomaly', 'right'],
               ]}
             />
             <RulChart rul={snapshot?.rul} />

@@ -11,6 +11,15 @@ const GRID = '#1d2634'
 const clock = (iso) =>
   iso ? new Date(iso).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }) : ''
 
+/** Series entries are `[dataKey, colour, label, axis]`, where `axis` is
+ *  optionally `'right'`.
+ *
+ *  A second axis matters more than it sounds. On one shared axis, RPM near 4750
+ *  forces the scale to 0-6000, which squeezes CHT (~180-290) and EGT (~700) into
+ *  the bottom eighth of the plot: a 40 C rise during an overheating fault moves
+ *  the line by under one percent of the chart height and reads as flat. Same
+ *  problem for an anomaly score of 0-1 plotted against health of 0-100.
+ */
 export function TrendChart({ title, subtitle, history, series, height = 190 }) {
   const data = useMemo(
     () =>
@@ -22,18 +31,23 @@ export function TrendChart({ title, subtitle, history, series, height = 190 }) {
       })),
     [history],
   )
+  const usesRight = series.some(([, , , axis]) => axis === 'right')
   return (
     <Panel title={title} subtitle={subtitle} className="chart">
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: usesRight ? 0 : 8, left: -18, bottom: 0 }}>
           <CartesianGrid stroke={GRID} vertical={false} />
           <XAxis dataKey="t" tick={AXIS} minTickGap={28} />
-          <YAxis tick={AXIS} />
+          <YAxis yAxisId="left" tick={AXIS} />
+          {usesRight && (
+            <YAxis yAxisId="right" orientation="right" tick={AXIS} />
+          )}
           <Tooltip contentStyle={{ background: '#0d1420', border: '1px solid #223049' }} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          {series.map(([key, colour, label]) => (
+          {series.map(([key, colour, label, axis]) => (
             <Line
               key={key}
+              yAxisId={axis === 'right' && usesRight ? 'right' : 'left'}
               name={label ?? key}
               type="monotone"
               dataKey={key}
@@ -133,6 +147,12 @@ export function CylinderChart({ measured, expected, hottest, coldest }) {
   )
 }
 
+// A subsystem with no fitted trend reports hours-remaining-to-TBO as a
+// placeholder. Drawn in the same colour as a real estimate, that makes an
+// unmeasured subsystem look like a healthy one, so those bars are dimmed and the
+// count is named in the subtitle.
+const TREND_ESTABLISHED = 'trend_established'
+
 export function RulChart({ rul }) {
   const subsystems = rul?.subsystems ?? {}
   const data = Object.entries(subsystems).map(([name, value]) => ({
@@ -140,11 +160,16 @@ export function RulChart({ rul }) {
     hours: value.rul_hours,
     low: value.confidence_interval_hours?.[0],
     high: value.confidence_interval_hours?.[1],
+    fitted: value.status === TREND_ESTABLISHED,
   }))
+  const unfitted = data.filter((row) => !row.fitted).length
   return (
     <Panel
       title="Remaining useful life by subsystem"
-      subtitle={`${rul?.method ?? ''} - limiting: ${rul?.limiting_subsystem ?? '--'}`}
+      subtitle={
+        `limiting: ${rul?.limiting_subsystem ?? '--'}` +
+        (unfitted ? ` - ${unfitted} subsystem(s) dimmed: no fitted trend, showing TBO` : '')
+      }
       className="chart"
     >
       <ResponsiveContainer width="100%" height={186}>
@@ -157,7 +182,15 @@ export function RulChart({ rul }) {
             {data.map((row) => (
               <Cell
                 key={row.name}
-                fill={row.hours < 50 ? '#fb6376' : row.hours < 250 ? '#ffb25b' : '#6de6a9'}
+                fill={
+                  !row.fitted
+                    ? '#2c3a4f'
+                    : row.hours < 50
+                      ? '#fb6376'
+                      : row.hours < 250
+                        ? '#ffb25b'
+                        : '#6de6a9'
+                }
               />
             ))}
           </Bar>

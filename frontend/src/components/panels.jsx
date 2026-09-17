@@ -2,12 +2,39 @@ import React from 'react'
 import { Activity, AlertTriangle, Gauge, ShieldCheck, Wrench } from 'lucide-react'
 import { Bar, Badge, Empty, Metric, Panel, pretty, stateClass } from './primitives.jsx'
 
+// RUL is only a number when a degradation trend actually supports one. Before
+// MIN_SAMPLES the estimator falls back to hours-remaining-to-TBO, and with a flat
+// trend it does the same - both are placeholders, not predictions. Rendering them
+// as a figure puts the most optimistic possible value next to a critical health
+// index, which reads as the panels contradicting each other. Show the state
+// instead, and keep the number for the case where a trend was really fitted.
+const RUL_PLACEHOLDER_STATUS = {
+  establishing_trend: ['Establishing', 'collecting samples for a trend'],
+  no_degradation_trend: ['No wear trend', 'no measurable degradation; limited by TBO'],
+}
+
+function rulDisplay(rul) {
+  if (!rul) return { value: '--', unit: '', tone: '' }
+  const placeholder = RUL_PLACEHOLDER_STATUS[rul.status]
+  if (placeholder) {
+    const [value, unit] = placeholder
+    return { value, unit, tone: '' }
+  }
+  const ci = rul.confidence_interval_hours
+  return {
+    value: `${rul.hours} h`,
+    unit: ci ? `95% CI ${ci[0]}-${ci[1]} h` : '',
+    tone: rul.hours < 50 ? 'bad' : rul.hours < 250 ? 'warn' : 'ok',
+  }
+}
+
 export function HealthSummary({ snapshot }) {
   const twin = snapshot?.digital_twin
   const prediction = snapshot?.prediction
   const rul = snapshot?.rul
   const health = twin?.health_score
   const tone = stateClass(health)
+  const rulView = rulDisplay(rul)
   return (
     <section className="health">
       <div className={`health-ring ${tone}`}>
@@ -22,13 +49,9 @@ export function HealthSummary({ snapshot }) {
       />
       <Metric
         label="REMAINING USEFUL LIFE"
-        value={rul ? `${rul.hours} h` : '--'}
-        unit={
-          rul?.confidence_interval_hours
-            ? `95% CI ${rul.confidence_interval_hours[0]}-${rul.confidence_interval_hours[1]} h`
-            : ''
-        }
-        tone={rul?.hours < 50 ? 'bad' : rul?.hours < 250 ? 'warn' : 'ok'}
+        value={rulView.value}
+        unit={rulView.unit}
+        tone={rulView.tone}
         hint={rul?.method}
       />
       <Metric
